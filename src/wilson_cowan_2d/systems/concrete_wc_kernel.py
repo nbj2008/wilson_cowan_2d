@@ -1,7 +1,7 @@
-from ..kernels.grids import Dist1DGrid, Dist2DGrid
+from ..kernels.grids import Dist1DGrid, Dist2DGrid, UnifGrid
 
 # Typing
-from numpy import array, exp as nexp, ones, stack
+from numpy import array, exp as nexp, stack
 from .abstract_wc_kernel import WCDecExp,  WCKernelParam, WCKernel
 
 
@@ -16,18 +16,18 @@ class DefaultParams(WCKernelParam):
 
 class WCUnif(WCKernel):
     def _make_grid(self):
-        self._grid = ones((self.size, self.size))
+        self._grid = UnifGrid(self.size).grid
 
     @property
-    def kernelgrid(self):
-        return stack([self._grid, self._grid])
+    def kernel_grid(self):
+        return stack([self.grid, self.grid])
 
 
 class WCDecExp1D(WCDecExp):
     def _make_grid(self):
-        self._grid = Dist1DGrid(self.size)
+        self._grid = Dist1DGrid(self.size).grid
 
 
 class WCDecExp2D(WCDecExp):
     def _make_grid(self):
-        self._grid = Dist2DGrid(self.size)
+        self._grid = Dist2DGrid(self.size).grid

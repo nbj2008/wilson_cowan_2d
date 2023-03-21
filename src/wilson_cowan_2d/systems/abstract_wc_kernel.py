@@ -89,7 +89,7 @@ class WCKernel(ABC):
         F = self.F
         Θ = self.θ
         τ = self.τ
-        KK = self.kernelgrid
+        KK = self.kernel_grid
 
         x = ((F((A @ (KK @ w.T)[0].T) - Θ) - w) * τ)
         return x.ravel()
@@ -98,7 +98,7 @@ class WCKernel(ABC):
         slv = solve_ivp(self.update, time, self.initial_w.ravel(), **kwargs)
         ln = slv.t.size
         ws = np.array([slv.y[:, i].reshape(2, self.size) for i in range(ln)])
-        dws = np.array([self.update(t, w).reshape(2,self.size) for t, w in zip(slv.t, ws)])
+        dws = np.array([self.update(t, w).reshape(2, self.size) for t, w in zip(slv.t, ws)])
 
         return SolvedSystem(slv, ws, dws)
 
@@ -107,8 +107,12 @@ class WCKernel(ABC):
         pass
 
     @abstractproperty
-    def kernelgrid(self):
+    def kernel_grid(self):
         pass
+
+    @property
+    def grid(self):
+        return self._grid
 
     @property
     def initial_u(self):
@@ -168,10 +172,10 @@ class WCDecExp(WCKernel):
         return self._kernel_func
 
     @property
-    def kernelgrid(self):
+    def kernel_grid(self):
         if self._kernel_grid is not None:
             return self._kernel_grid
-        self._kernel_grid = self.kernel_func(self._grid.grid)
+        self._kernel_grid = self.kernel_func(self.grid)
         return self._kernel_grid
 
     @abstractmethod

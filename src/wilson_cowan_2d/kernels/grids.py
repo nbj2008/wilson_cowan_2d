@@ -29,10 +29,11 @@ class Grid(ABC):
 class UnifGrid(Grid):
     def __init__(self, size):
         super().__init__(size)
-        self.grid = ones(size)
+        self._grid = ones((size, size))
 
-    def __getitem__(self):
-        return 1
+    def __getitem__(self, key):
+        assert key < self.size, f"Index must be less than {self.size}"
+        return self._grid[key]
 
 
 class Dist2DGrid(Grid):
