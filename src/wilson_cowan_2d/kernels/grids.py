@@ -1,4 +1,4 @@
-from numpy import concatenate, repeat, stack, arange, abs as nabs, mgrid
+from numpy import concatenate, repeat, stack, arange, abs as nabs, mgrid, ones
 from scipy.linalg import norm
 from itertools import product
 from abc import ABC, abstractmethod
@@ -24,6 +24,15 @@ class Grid(ABC):
     @property
     def shape(self):
         return self._grid.shape
+
+
+class UnifGrid(Grid):
+    def __init__(self, size):
+        super().__init__(size)
+        self.grid = ones(size)
+
+    def __getitem__(self):
+        return 1
 
 
 class Dist2DGrid(Grid):
