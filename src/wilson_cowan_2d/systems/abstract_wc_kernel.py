@@ -1,4 +1,3 @@
-import numpy as np
 from numpy import concatenate, split
 from scipy.integrate import solve_ivp
 
@@ -35,12 +34,12 @@ class SolvedSystem:
         self._inps = inps
         self._dinps = dinps
 
-    def __getitem__(self, key: int) -> ndarray:
-        return np.array([
+    def __getitem__(self, key: int) -> Tuple[float, Tuple[float]]:
+        return (
             self._solved.t[key],
-            tuple(i[key] for i in self._inps),
-            tuple(di[key] for di in self._dinps)
-        ])
+            tuple(i for i in self._inps[key]),
+            tuple(di[0] for di in self._dinps[key])
+        )
 
     def __len__(self):
         return self._solved.t.size
@@ -63,20 +62,21 @@ class WCKernel(ABC):
 
     def __call__(self, time: Tuple[float], **kwargs) -> SolvedSystem:
         slv = solve_ivp(self.update, time, self.initial_inp_ravel, **kwargs)
-        inps = split(slv.y.T, self.num_vars, axis=1)
+        inps = slv.y.T
         dinps = [
             split(self.update(t, inp), self.num_vars)
             for t, inp in zip(slv.t, inps)
         ]
 
-        return self._make_solved_system(slv, inps, dinps)
+        print(len(inps), len(dinps))
+        return self._get_solved_system(slv, inps, dinps)
 
     @abstractmethod
     def update(self, t, inp) -> ndarray:
         pass
 
-    @abstractmethod
-    def _make_solved_system(self) -> SolvedSystem:
+    @abstractproperty
+    def _get_solved_system(self) -> SolvedSystem:
         pass
 
     @abstractmethod
@@ -88,12 +88,15 @@ class WCKernel(ABC):
         pass
 
     @property
-    def inital_inp(self) -> Tuple[ndarray]:
-        return self._inital_inp
+    def initial_inp(self) -> Tuple[ndarray]:
+        return self._init_inp
 
     @property
     def initial_inp_matrix(self) -> ndarray:
-        return concatenate(self.inital_inp, axis=1).T
+        if self.initial_inp[0].size == 1:
+            return concatenate(self.initial_inp)
+
+        return concatenate(self.initial_inp, axis=1).T
 
     @property
     def initial_inp_ravel(self) -> ndarray:
@@ -101,7 +104,7 @@ class WCKernel(ABC):
 
     @property
     def initial_inp_vecs(self) -> List[ndarray]:
-        return split(self.inital_inp_ravel, len(self.inital_inp))
+        return split(self.initial_inp_ravel, self.num_vars)
 
     @property
     def grid(self) -> ndarray:
@@ -130,6 +133,10 @@ class WCKernel(ABC):
     @property
     def size(self) -> int:
         return self._param.size
+
+    @property
+    def num_vars(self) -> int:
+        return self._num_vars
 
 
 class WCDecExp(WCKernel):

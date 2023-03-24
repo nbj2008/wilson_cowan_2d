@@ -1,10 +1,11 @@
-from ..kernels.grids import Dist1DGrid, Dist2DGrid, UnifGrid
+from ..kernels.grids import Dist1DGrid, UnifGrid  # , Dist2DGrid
 
 # Typing
 from numpy import array, stack, concatenate, ndarray, split, exp as nexp
 from typing import Tuple, Callable
-from .abstract_wc_kernel import (WCDecExp,  WCKernelParam,
-                                 WCKernel, SolvedSystem)
+from .abstract_wc_kernel import WCDecExp,  WCKernelParam, WCKernel
+from .concrete_solved_system import (UnifSolvedSystem, Local1DSolvedSystem,
+                                     NonLocal1DSolvedSystem)
 
 
 class DefaultParams(WCKernelParam):
@@ -17,110 +18,9 @@ class DefaultParams(WCKernelParam):
              η=η)
 
 
-class UnifSolvedSystem(SolvedSystem):
-    @property
-    def u(self) -> ndarray:
-        return array([inp[0] for inp in self._inps])
-
-    @property
-    def v(self) -> ndarray:
-        return array([inp[1] for inp in self._inps])
-
-    @property
-    def du(self) -> ndarray:
-        return array([dinp[0] for dinp in self._dinps])
-
-    @property
-    def dv(self) -> ndarray:
-        return array([dinp[1] for dinp in self._dinps])
-
-
-class Local1DSolvedSystem(SolvedSystem):
-    @property
-    def u(self) -> ndarray:
-        return array([inp[0] for inp in self._inps])
-
-    @property
-    def v(self) -> ndarray:
-        return array([inp[1] for inp in self._inps])
-
-    @property
-    def w(self) -> ndarray:
-        return array([inp[2] for inp in self._inps])
-
-    @property
-    def z(self) -> ndarray:
-        return array([inp[3] for inp in self._inps])
-
-    @property
-    def du(self) -> ndarray:
-        return array([dinp[0] for dinp in self._dinps])
-
-    @property
-    def dv(self) -> ndarray:
-        return array([dinp[1] for dinp in self._dinps])
-
-    @property
-    def dw(self) -> ndarray:
-        return array([dinp[2] for dinp in self._dinps])
-
-    @property
-    def dz(self) -> ndarray:
-        return array([dinp[3] for dinp in self._dinps])
-
-
-class NonLocal1DSolvedSystem(SolvedSystem):
-    @property
-    def u(self) -> ndarray:
-        return array([inp[0] for inp in self._inps])
-
-    @property
-    def v(self) -> ndarray:
-        return array([inp[1] for inp in self._inps])
-
-    @property
-    def w(self) -> ndarray:
-        return array([inp[2] for inp in self._inps])
-
-    @property
-    def z(self) -> ndarray:
-        return array([inp[3] for inp in self._inps])
-
-    @property
-    def q(self) -> ndarray:
-        return array([inp[4] for inp in self._inps])
-
-    @property
-    def p(self) -> ndarray:
-        return array([inp[5] for inp in self._inps])
-
-    @property
-    def du(self) -> ndarray:
-        return array([dinp[0] for dinp in self._dinps])
-
-    @property
-    def dv(self) -> ndarray:
-        return array([dinp[1] for dinp in self._dinps])
-
-    @property
-    def dw(self) -> ndarray:
-        return array([dinp[2] for dinp in self._dinps])
-
-    @property
-    def dz(self) -> ndarray:
-        return array([dinp[3] for dinp in self._dinps])
-
-    @property
-    def dq(self) -> ndarray:
-        return array([dinp[4] for dinp in self._dinps])
-
-    @property
-    def dp(self) -> ndarray:
-        return array([dinp[5] for dinp in self._dinps])
-
-
 class WCUnif(WCKernel):
-    def _make_solved_sytem(self) -> Callable:
+    @property
+    def _get_solved_system(self) -> Callable:
         return UnifSolvedSystem
 
     def _make_grid(self) -> ndarray:
@@ -129,10 +29,6 @@ class WCUnif(WCKernel):
     @property
     def kernel_grid(self) -> ndarray:
         return stack([self.grid, self.grid])
-
-    @property
-    def inital_inp(self) -> ndarray:
-        return concatenate([self.u, self.v])
 
     def update(self, t: Tuple[int], inp: ndarray) -> ndarray:
         inp = inp.reshape(2, self.size)
@@ -147,7 +43,8 @@ class WCUnif(WCKernel):
 
 
 class WCDecExpLocal1D(WCDecExp):
-    def _make_solved_system(self) -> Callable:
+    @property
+    def _get_solved_system(self) -> Callable:
         return Local1DSolvedSystem
 
     def _make_grid(self) -> ndarray:
@@ -177,7 +74,8 @@ class WCDecExpLocal1D(WCDecExp):
 
 
 class WCDecExpNonLocal1D(WCDecExp):
-    def _make_solved_system(self) -> Callable:
+    @property
+    def _get_solved_system(self) -> Callable:
         return NonLocal1DSolvedSystem
 
     def _make_grid(self) -> ndarray:
@@ -210,9 +108,9 @@ class WCDecExpNonLocal1D(WCDecExp):
         return concatenate((du, dv, dw, dz, dq, dp)).ravel()
 
 
-class WCDecExp2D(WCDecExp):
-    def _make_grid(self) -> ndarray:
-        self._grid = Dist2DGrid(self.size).grid
+# class WCDecExp2D(WCDecExp):
+    # def _make_grid(self) -> ndarray:
+        # self._grid = Dist2DGrid(self.size).grid
 
     # def update(self, t, w):
         # w = w.reshape(2, self.size)
