@@ -5,11 +5,11 @@ from .abstract_wc_kernel import SolvedSystem
 class UnifSolvedSystem(SolvedSystem):
     @property
     def u(self) -> ndarray:
-        return array([inp[0] for inp in self._inps])
+        return self._inps[0]
 
     @property
     def v(self) -> ndarray:
-        return array([inp[1] for inp in self._inps])
+        return self._inps[1]
 
     @property
     def du(self) -> ndarray:
@@ -23,19 +23,19 @@ class UnifSolvedSystem(SolvedSystem):
 class Local1DSolvedSystem(SolvedSystem):
     @property
     def u(self) -> ndarray:
-        return array([inp[0] for inp in self._inps])
+        return self._inps[0].T
 
     @property
     def v(self) -> ndarray:
-        return array([inp[1] for inp in self._inps])
+        return self._inps[1].T
 
     @property
     def w(self) -> ndarray:
-        return array([inp[2] for inp in self._inps])
+        return self._inps[2].T
 
     @property
     def z(self) -> ndarray:
-        return array([inp[3] for inp in self._inps])
+        return self._inps[3].T
 
     @property
     def du(self) -> ndarray:
@@ -57,27 +57,27 @@ class Local1DSolvedSystem(SolvedSystem):
 class NonLocal1DSolvedSystem(SolvedSystem):
     @property
     def u(self) -> ndarray:
-        return array([inp[0] for inp in self._inps])
+        return self._inps[0].T
 
     @property
     def v(self) -> ndarray:
-        return array([inp[1] for inp in self._inps])
+        return self._inps[1].T
 
     @property
     def w(self) -> ndarray:
-        return array([inp[2] for inp in self._inps])
+        return self._inps[2].T
 
     @property
     def z(self) -> ndarray:
-        return array([inp[3] for inp in self._inps])
+        return self._inps[3].T
 
     @property
     def q(self) -> ndarray:
-        return array([inp[4] for inp in self._inps])
+        return self._inps[4].T
 
     @property
     def p(self) -> ndarray:
-        return array([inp[5] for inp in self._inps])
+        return self._inps[5].T
 
     @property
     def du(self) -> ndarray:

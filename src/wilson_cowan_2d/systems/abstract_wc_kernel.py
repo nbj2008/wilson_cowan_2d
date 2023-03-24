@@ -37,7 +37,7 @@ class SolvedSystem:
     def __getitem__(self, key: int) -> Tuple[float, Tuple[float]]:
         return (
             self._solved.t[key],
-            tuple(i for i in self._inps[key]),
+            tuple(i for i in concatenate(self._inps, axis=1))[key],
             tuple(di[0] for di in self._dinps[key])
         )
 
@@ -62,10 +62,10 @@ class WCKernel(ABC):
 
     def __call__(self, time: Tuple[float], **kwargs) -> SolvedSystem:
         slv = solve_ivp(self.update, time, self.initial_inp_ravel, **kwargs)
-        inps = slv.y.T
+        inps = split(slv.y.T, self.num_vars, axis=1)
         dinps = [
             split(self.update(t, inp), self.num_vars)
-            for t, inp in zip(slv.t, inps)
+            for t, inp in zip(slv.t, slv.y.T)
         ]
 
         print(len(inps), len(dinps))
@@ -140,8 +140,8 @@ class WCKernel(ABC):
 
 
 class WCDecExp(WCKernel):
-    def __init__(self, u: ndarray, v: ndarray, param: Param, σ: ndarray):
-        super().__init__(u, v, param)
+    def __init__(self, inp: Tuple[ndarray], param: Param, σ: ndarray):
+        super().__init__(inp, param)
         self._σ = σ
         self._set_kernel_func()
         self._kernel_grid = None
