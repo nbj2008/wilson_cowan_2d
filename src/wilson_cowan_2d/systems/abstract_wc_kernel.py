@@ -1,8 +1,9 @@
 import numpy as np
-from numpy import stack
+from numpy import concatenate, split
 from scipy.integrate import solve_ivp
 
 # Class Niceities
+from typing import List
 from dataclasses import dataclass
 from abc import ABC, abstractproperty, abstractmethod
 
@@ -11,7 +12,7 @@ from ..kernels.kernels import (make_K_2_populations,
 
 # Typing
 from numpy import ndarray
-from typing import Tuple, List, Callable, NewType
+from typing import Tuple, Callable, NewType
 
 
 @dataclass
@@ -19,6 +20,7 @@ class WCKernelParam:
     A: ndarray  # [[a_ee, a_ei],[a_ie, a_ii]]
     Θ: ndarray  # [Θe, Θi]
     τ: ndarray  # [τe==1, 1/τi]
+    η: float
     size: int
     F: Callable
 
@@ -27,13 +29,18 @@ Param = NewType("Param", WCKernelParam)
 
 
 class SolvedSystem:
-    def __init__(self, solved, ws, dws):
+    def __init__(self, solved,
+                 inps: List[ndarray], dinps: List[ndarray]):
         self._solved = solved
-        self._ws = ws
-        self._dws = dws
+        self._inps = inps
+        self._dinps = dinps
 
-    def __getitem__(self, key) -> ndarray:
-        return np.array([self._solved.t[key], self._ws[key], self._dws[key]])
+    def __getitem__(self, key: int) -> ndarray:
+        return np.array([
+            self._solved.t[key],
+            tuple(i[key] for i in self._inps),
+            tuple(di[key] for di in self._dinps)
+        ])
 
     def __len__(self):
         return self._solved.t.size
@@ -42,65 +49,35 @@ class SolvedSystem:
         for ix in range(len(self)):
             yield self[ix]
 
-    def u_tuples(self) -> List[Tuple[ndarray]]:
-        return [(t, w[0], dw[0]) for (t, w, dw) in self]
-
-    def v_tuples(self) -> List[Tuple[ndarray]]:
-        return [(t, w[1], dw[1]) for (t, w, dw) in self]
-
     @property
     def t(self):
         return self._solved.t
 
-    @property
-    def us(self):
-        return np.array([w[0] for w in self._ws])
-
-    @property
-    def vs(self):
-        return np.array([w[1] for w in self._ws])
-
-    @property
-    def dus(self):
-        return np.array([dw[0] for dw in self._dws])
-
-    @property
-    def dvs(self):
-        return np.array([dw[1] for dw in self._dws])
-
-    def u_tuples(self) -> List[Tuple[ndarray]]:
-        return [(t, w[0], dw[0]) for (t, w, dw) in self]
-
-    def v_tuples(self) -> List[Tuple[ndarray]]:
-        return [(t, w[1], dw[1]) for (t, w, dw) in self]
-
 
 class WCKernel(ABC):
-    def __init__(self, u, v, param: WCKernelParam):
+    def __init__(self, inp: Tuple[ndarray], param: WCKernelParam):
         self._param = param
-        self._init_u = u
-        self._init_v = v
-        self._init_w = stack([u, v])
+        self._init_inp = inp
+        self._num_vars = len(inp)
         self._make_grid()
 
-    def update(self, t, w) -> ndarray:
-        w = w.reshape(2, self.size)
-        A = self.A * np.array([[1, -1], [1, -1]])  # To subtract ends
-        F = self.F
-        Θ = self.θ
-        τ = self.τ
-        KK = self.kernel_grid
+    def __call__(self, time: Tuple[float], **kwargs) -> SolvedSystem:
+        slv = solve_ivp(self.update, time, self.initial_inp_ravel, **kwargs)
+        inps = split(slv.y.T, self.num_vars, axis=1)
+        dinps = [
+            split(self.update(t, inp), self.num_vars)
+            for t, inp in zip(slv.t, inps)
+        ]
 
-        x = ((F((A @ (KK @ w.T)[0].T) - Θ) - w) * τ)
-        return x.ravel()
+        return self._make_solved_system(slv, inps, dinps)
 
-    def __call__(self, time, **kwargs) -> SolvedSystem:
-        slv = solve_ivp(self.update, time, self.initial_w.ravel(), **kwargs)
-        ln = slv.t.size
-        ws = np.array([slv.y[:, i].reshape(2, self.size) for i in range(ln)])
-        dws = np.array([self.update(t, w).reshape(2, self.size) for t, w in zip(slv.t, ws)])
+    @abstractmethod
+    def update(self, t, inp) -> ndarray:
+        pass
 
-        return SolvedSystem(slv, ws, dws)
+    @abstractmethod
+    def _make_solved_system(self) -> SolvedSystem:
+        pass
 
     @abstractmethod
     def _make_grid(self):
@@ -111,39 +88,47 @@ class WCKernel(ABC):
         pass
 
     @property
-    def grid(self):
+    def inital_inp(self) -> Tuple[ndarray]:
+        return self._inital_inp
+
+    @property
+    def initial_inp_matrix(self) -> ndarray:
+        return concatenate(self.inital_inp, axis=1).T
+
+    @property
+    def initial_inp_ravel(self) -> ndarray:
+        return self.initial_inp_matrix.ravel()
+
+    @property
+    def initial_inp_vecs(self) -> List[ndarray]:
+        return split(self.inital_inp_ravel, len(self.inital_inp))
+
+    @property
+    def grid(self) -> ndarray:
         return self._grid
 
     @property
-    def initial_u(self):
-        return self._init_u
-
-    @property
-    def initial_v(self):
-        return self._init_v
-
-    @property
-    def initial_w(self):
-        return self._init_w
-
-    @property
-    def A(self):
+    def A(self) -> ndarray:
         return self._param.A
 
     @property
-    def θ(self):
+    def θ(self) -> ndarray:
         return self._param.Θ.reshape([2, 1])
 
     @property
-    def τ(self):
+    def τ(self) -> float:
         return self._param.τ
 
     @property
-    def F(self):
+    def η(self) -> float:
+        return self._param.η
+
+    @property
+    def F(self) -> Callable:
         return self._param.F
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self._param.size
 
 
@@ -158,7 +143,7 @@ class WCDecExp(WCKernel):
         self._kernel_func = make_K_2_populations(dec_exp, self.σ)
 
     @property
-    def σ(self):
+    def σ(self) -> ndarray:
         return self._σ
 
     @σ.setter
@@ -168,16 +153,12 @@ class WCDecExp(WCKernel):
         self._kernel_grid = None
 
     @property
-    def kernel_func(self):
+    def kernel_func(self) -> Callable:
         return self._kernel_func
 
     @property
-    def kernel_grid(self):
+    def kernel_grid(self) -> ndarray:
         if self._kernel_grid is not None:
             return self._kernel_grid
         self._kernel_grid = self.kernel_func(self.grid)
         return self._kernel_grid
-
-    @abstractmethod
-    def _make_grid(self):
-        pass

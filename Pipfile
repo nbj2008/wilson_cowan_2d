@@ -15,6 +15,9 @@ ipywidgets = "*"
 array2gif = "*"
 animatplot = "*"
 seaborn = "*"
+mpi4py = "*"
+petsc = "*"
+petsc4py = "*"
 
 [dev-packages]
 jupyter = "*"
