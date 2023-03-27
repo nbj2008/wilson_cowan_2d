@@ -1,4 +1,6 @@
-from ..kernels.grids import Dist1DGrid, UnifGrid  # , Dist2DGrid
+import numpy as np
+from ..kernels.kernels import decreasing_exponential
+from ..kernels.grids import Dist1DGrid, UnifGrid # , Dist2DGrid
 
 # Typing
 from numpy import array, stack, concatenate, ndarray, split, exp as nexp
@@ -57,13 +59,21 @@ class WCDecExpLocal1D(WCDecExp):
         F = self.F
         A = self.A
         θ = self.θ
-        τ = self.τ
+        τi, τe = self.τ
         η = self.η
+        abss = np.abs(np.arange(-self.size, self.size, 1))
+        DEe = decreasing_exponential(abss, σe)
+        DEe /= DEe.sum()
+        DEi = decreasing_exponential(abss, σi)
+        DEi /= DEi.sum()
+        Ke = np.convolve(u.ravel(), DEe ,mode='valid')[:-1].reshape(self.size, 1)  # self.kernel_grid[0]
+        Ki = np.convolve(v.ravel(), DEi ,mode='valid')[:-1].reshape(self.size, 1)  # self.kernel_grid[1]
+        # print(Ke.shape, Ki.shape, v.shape)
 
-        du = 1/η*(-u + F((A[0, 0] * w - A[0, 1] * v - θ[0])))\
+        du = 1/(η*τe)*(-u + F((A[0, 0] * Ke - A[0, 1] * Ki - θ[0])))\
             .reshape(u.shape)
 
-        dv = 1/(η*τ)*(-v + F(A[1, 0] * w - A[1, 1] * v - θ[1]))\
+        dv = 1/(η*τi)*(-v + F(A[1, 0] *  Ke - A[1, 1] * Ki - θ[1]))\
             .reshape(v.shape)
 
         dw = z
