@@ -19,9 +19,9 @@ class WCKernelParam:
     A: ndarray  # [[a_ee, a_ei],[a_ie, a_ii]]
     Θ: ndarray  # [Θe, Θi]
     τ: ndarray  # [τe==1, 1/τi]
+    β: float
     η: float
     size: int
-    F: Callable
 
 
 Param = NewType("Param", WCKernelParam)
@@ -67,8 +67,9 @@ class WCKernel(ABC):
             split(self.update(t, inp), self.num_vars)
             for t, inp in zip(slv.t, slv.y.T)
         ]
+        if not slv.success:
+            print("Solver Didn't finish with message:", slv.message)
 
-        print(len(inps), len(dinps))
         return self._get_solved_system(slv, inps, dinps)
 
     @abstractmethod

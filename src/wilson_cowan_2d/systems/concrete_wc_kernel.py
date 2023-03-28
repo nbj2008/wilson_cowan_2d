@@ -15,9 +15,12 @@ class DefaultParams(WCKernelParam):
         super().__init__(
              A=array([[1, 1.5], [1, 0.25]]),
              Θ=array([0.125, 0.4]),
-             F=lambda x: 1/(1 + nexp(-50 * x)),  # Sigmoid with β=50
+             β=50,
              τ=τ, size=size,
              η=η)
+
+    def F(self, other):
+        return 1/(1 + nexp(-self.β * other))
 
 
 class WCUnif(WCKernel):
@@ -59,15 +62,15 @@ class WCDecExpLocal1D(WCDecExp):
         F = self.F
         A = self.A
         θ = self.θ
-        τi, τe = self.τ
+        τe, τi = self.τ
         η = self.η
-        abss = np.abs(np.arange(-self.size, self.size, 1))
+        abss = np.abs(np.linspace(-self.size, self.size, 2*self.size-1))
         DEe = decreasing_exponential(abss, σe)
-        DEe /= DEe.sum()
+        # DEe /= DEe.sum()
         DEi = decreasing_exponential(abss, σi)
-        DEi /= DEi.sum()
-        Ke = np.convolve(u.ravel(), DEe ,mode='valid')[:-1].reshape(self.size, 1)  # self.kernel_grid[0]
-        Ki = np.convolve(v.ravel(), DEi ,mode='valid')[:-1].reshape(self.size, 1)  # self.kernel_grid[1]
+        # DEi /= DEi.sum()
+        Ke = np.convolve(DEe , u.ravel(),mode='valid').reshape(self.size, 1)  # self.kernel_grid[0]
+        Ki = np.convolve(DEi, v.ravel(), mode='valid').reshape(self.size, 1)  # self.kernel_grid[1]
         # print(Ke.shape, Ki.shape, v.shape)
 
         du = 1/(η*τe)*(-u + F((A[0, 0] * Ke - A[0, 1] * Ki - θ[0])))\
