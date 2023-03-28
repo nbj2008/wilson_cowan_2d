@@ -6,6 +6,7 @@ from typing import List
 from dataclasses import dataclass
 from abc import ABC, abstractproperty, abstractmethod
 
+from .nulclines import nulclines_and_crosspoints
 from ..kernels.kernels import (make_K_2_populations,
                                decreasing_exponential as dec_exp)
 
@@ -138,6 +139,10 @@ class WCKernel(ABC):
     @property
     def num_vars(self) -> int:
         return self._num_vars
+
+    @property
+    def nulclines_and_crosspoints(self, interp_prec=1e-3, fit_points=250):
+        return nulclines_and_crosspoints(self.params, interp_prec, fit_points)
 
 
 class WCDecExp(WCKernel):

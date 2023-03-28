@@ -1,21 +1,21 @@
 import numpy as np
 import scipy.optimize as opt
 from functools import partial
-from wilson_cowan_2d.systems.abstract_wc_kernel import WCKernelParam
+from wilson_cowan_2d.systems.abstract_wc_kernel import Param
 
 
-def calc_nulclines_crosspoints(params: WCKernelParam, interp_prec=1e-3):
-    uinterp, vinterp = calc_nulclines(params, interp_prec)
+def calc_nulclines_crosspoints(params: Param, interp_prec=0.001, fit_points=250):
+    uinterp, vinterp = calc_nulclines(params, interp_prec, fit_points)
     cps = _find_cross_points(uinterp[0], uinterp[1], vinterp[1])
     return uinterp, vinterp, cps
 
 
-def calc_cross_points(params: WCKernelParam, interp_prec=1e-3):
-    uinterp, vinterp = calc_nulclines(params, interp_prec)
+def calc_cross_points(params: Param, interp_prec=1e-3, fit_points=250):
+    uinterp, vinterp = calc_nulclines(params, interp_prec, fit_points)
     return _find_cross_points(uinterp[0], uinterp[1], vinterp[1])
 
 
-def calc_nulclines(params: WCKernelParam, interp_prec=1e-3, fit_points=250):
+def calc_nulclines(params: Param, interp_prec=1e-3, fit_points=250):
     u_func = partial(_u_min_func, params=params)
     v_func = partial(_v_min_func, params=params)
 
@@ -46,9 +46,9 @@ def _find_cross_points(rang, uinterp, vinterp):
     return np.stack([rx, vx])
 
 
-def _u_min_func(v, u, param: WCKernelParam):
+def _u_min_func(v, u, param: Param):
     return np.abs(param.F(param.A[0, 0]*u - param.A[0, 1]*v - param.Θ[0]) - u)
 
 
-def _v_min_func(u, v, param: WCKernelParam):
+def _v_min_func(u, v, param: Param):
     return np.abs(param.F(param.A[1, 0]*u - param.A[1, 1]*v - param.Θ[1]) - v)
