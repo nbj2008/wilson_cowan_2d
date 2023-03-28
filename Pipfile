@@ -18,6 +18,7 @@ seaborn = "*"
 mpi4py = "*"
 petsc = "*"
 petsc4py = "*"
+sympy = "*"
 
 [dev-packages]
 jupyter = "*"
