@@ -1,3 +1,1 @@
-from .concrete_wc_kernel import (
-    WCDecExpLocal1D, WCDecExpNonLocal1D, DefaultParams
-)
+from .concrete_wc_kernel import (WCDecExpStatic1D,  DefaultParams)
