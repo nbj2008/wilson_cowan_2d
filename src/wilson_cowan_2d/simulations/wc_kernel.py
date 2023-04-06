@@ -1,68 +1,24 @@
-from numpy import concatenate, split, ones
+from numpy import concatenate, split
 from scipy.integrate import solve_ivp
 
 # Class Niceities
-from typing import List
-from dataclasses import dataclass
-from abc import ABC, abstractproperty, abstractmethod
+from abc import ABC, abstractmethod
 
 # Typing
 from numpy import ndarray
-from typing import Tuple, Callable, NewType
-
-
-@dataclass
-class WCKernelParam:
-    A: ndarray  # [[a_ee, a_ei],[a_ie, a_ii]]
-    Θ: ndarray  # [Θe, Θi]
-    τ: ndarray  # [τe==1, τi]
-    β: float
-    η: float
-    size: int
-    σ: ndarray = ones(2) # [σe ==1, σi]
-
-
-Param = NewType("Param", WCKernelParam)
-
-
-class SolvedSystem:
-    def __init__(self, solved,
-                 inps: List[ndarray], dinps: List[ndarray]):
-        self._solved = solved
-        self._inps = inps
-        self._dinps = dinps
-
-    def __getitem__(self, key: int) -> Tuple[float, Tuple[float]]:
-        return (
-            self._solved.t[key],
-            tuple(i for i in concatenate(self._inps, axis=1))[key],
-            tuple(di[0] for di in self._dinps[key])
-        )
-
-    def __len__(self):
-        return self._solved.t.size
-
-    def __iter__(self):
-        for ix in range(len(self)):
-            yield self[ix]
-
-    @property
-    def t(self):
-        return self._solved.t
-
-    @property
-    def solved(self):
-        return self._solved
+from typing import Tuple, Callable, List
+from . import SimResult, Param
+from .solved_system import SolvedSystem
 
 
 class WCKernel(ABC):
-    def __init__(self, inp: Tuple[ndarray], param: WCKernelParam):
+    def __init__(self, inp: Tuple[ndarray], param: Param):
         self._param = param
         self._init_inp = inp
         self._num_vars = len(inp)
         self._simple = False
 
-    def __call__(self, time: Tuple[float], simple=False, **kwargs) -> SolvedSystem:
+    def __call__(self, time: Tuple[float], simple=False, **kwargs) -> SimResult:
         simple = simple or self._simple
         slv = solve_ivp(self.update, time, self.initial_inp_ravel, **kwargs)
         if simple: return slv
@@ -81,9 +37,9 @@ class WCKernel(ABC):
     def update(self, t: float, inp: ndarray) -> ndarray:
         pass
 
-    @abstractproperty
-    def _get_solved_system(self) -> SolvedSystem:
-        pass
+    @property
+    def _get_solved_system(self) -> SimResult:
+        return SolvedSystem
 
     @property
     def initial_inp(self) -> Tuple[ndarray]:
@@ -129,19 +85,13 @@ class WCKernel(ABC):
         return self._param.size
 
     @property
+    def σ(self) -> ndarray:
+        return self._param.σ
+
+    @property
     def num_vars(self) -> int:
         return self._num_vars
 
     @property
     def param(self) -> Param:
         return self._param
-
-
-class WCDecExp(WCKernel):
-    def __init__(self, inp: Tuple[ndarray], param: Param, σ: ndarray):
-        super().__init__(inp, param)
-        self._σ = σ
-
-    @property
-    def σ(self) -> ndarray:
-        return self._σ

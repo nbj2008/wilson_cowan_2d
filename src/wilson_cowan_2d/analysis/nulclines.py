@@ -3,7 +3,7 @@ import scipy.optimize as opt
 from functools import partial
 
 from typing import NewType, Tuple, List, Callable
-from .abstract_wc_kernel import Param
+from ..simulations import Param
 fr = NewType("fr", float)
 
 
@@ -12,7 +12,7 @@ def calc_nulclines_crosspoints(params: Param, interp_prec: float = 0.001,
     """Produces the U and V nulclines as well as their crossing points"""
     uinterp, vinterp = calc_nulclines(params, interp_prec, fit_points)
     cps = _find_cross_points(uinterp[0], uinterp[1], vinterp[1])
-    return uinterp, vinterp, cps[1:]
+    return uinterp, vinterp, cps[:, 1:]
 
 
 def calc_cross_points(params: Param, interp_prec: float = 1e-3,
