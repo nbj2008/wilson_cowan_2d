@@ -14,7 +14,7 @@ class WCUnif(WCKernel):
     def update(self, t: Tuple[int], inp: ndarray) -> ndarray:
         u, v = inp
         F = self.F
-        A, (θe, θi), (τe, τi), η, = self.param.derivative_tuple
+        A, (θe, θi), (τe, τi), η, _ = self.param.derivative_tuple
 
         du = 1/(η*τe)*(-u + F((A[0, 0] * u - A[0, 1] * v - θe)))\
             .reshape(u.shape)
