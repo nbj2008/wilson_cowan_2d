@@ -1,5 +1,7 @@
 import numpy as np
 from numpy import concatenate, ndarray, split
+from scipy import linalg as la
+from scipy.signal import convolve2d
 from .nonlinear_functions import decreasing_exponential
 from ..analysis.stability import calc_AA
 
@@ -121,8 +123,8 @@ class WCDecExpTravelNonLocal1D(WCKernel):
 # TODO: Actually get this to work
 class WCDecExpMondronomy(WCKernel):
     """System for determining the Mondronomy Matrix"""
-    def __init__(self, inp: Tuple[ndarray], param: Param, σ: ndarray):
-        super().__init__(inp, param, σ)
+    def __init__(self, inp: Tuple[ndarray], param: Param):
+        super().__init__(inp, param)
         self._simple = True
 
     @property
@@ -138,8 +140,8 @@ class WCDecExpMondronomy(WCKernel):
         X = inp[0:4].reshape(2, 2)
         u, v = inp[4:]
         F = self.F
-        A, (θe, θi), (τe, τi), η,  = self.param.derivative_tuple
-        ω = self.param.ω
+        A, (θe, θi), (τe, τi), η, _, _ = self.param.derivative_tuple
+        AA = calc_AA(u, v, self.param)
 
         # # Iterate U an V values
         du = 1/(η*τe)*(-u + F((A[0, 0] * u - A[0, 1] * v - θe)))
@@ -149,4 +151,36 @@ class WCDecExpMondronomy(WCKernel):
         dX = (AA @ X).ravel()
 
         # return dX.ravel()
-        return concatenate((dX.ravel(), np.array(du), np.array(dv))).ravel()
+        return concatenate((dX.ravel(), np.array((du, dv)))).ravel()
+
+
+class WCDecExpTravelNonLocal2D(WCKernel):
+    """Simulating traveling wave in non-localized inhibition neural system"""
+    def update(self, t: Tuple[int], inp: ndarray) -> ndarray:
+        """Check of the linear algebra solution"""
+        # Model param
+        u, v = inp.reshape(2, self.size, self.size)
+        F = self.F
+        A, (θe, θi), (τe, τi), η, (σe, σi) = self.param.derivative_tuple
+
+        # Space param
+        x_lm = 21  # Found heuristically. No rational for limit from literature
+        dx = 1  # 2*x_lm/self.size
+        rang = np.linspace(-x_lm, x_lm, self.size)
+        xx, yy = np.meshgrid(rang, rang)
+
+        dist_2norm = la.norm(np.stack((xx, yy)), axis=0)
+        DEe = decreasing_exponential(dist_2norm, σe)
+        DEi = decreasing_exponential(dist_2norm, σi)
+        # print(DEe.shape, u.shape, DEi.shape, v.shape,)
+        Ke = dx*convolve2d(DEe, u, mode='same', boundary='symm')
+        Ki = dx*convolve2d(DEi, v, mode='same', boundary='symm')
+
+        # ODE equations
+        du = 1/(η*τe)*(-u + F((A[0, 0] * Ke - A[0, 1] * Ki - θe)))\
+            .reshape(u.shape)
+
+        dv = 1/(η*τi)*(-v + F(A[1, 0] * Ke - A[1, 1] * Ki - θi))\
+            .reshape(v.shape)
+
+        return concatenate((du, dv)).ravel()
