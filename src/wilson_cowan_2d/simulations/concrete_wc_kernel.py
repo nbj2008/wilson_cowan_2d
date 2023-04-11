@@ -155,32 +155,43 @@ class WCDecExpMondronomy(WCKernel):
 
 
 class WCDecExpTravelNonLocal2D(WCKernel):
+    def __init__(self, inp: Tuple[ndarray], param: Param):
+        super().__init__(inp, param)
+        self._make_kernels()
+        self._simple = True
+
+    def _make_kernels(self):
+        x_lm = 24  # self.size/2  # Found heuristically. No rational for limit from literature
+        self.dx = x_lm/self.size
+        rang = np.linspace(-x_lm/2, x_lm/2, x_lm)
+        xx, yy = np.meshgrid(rang, rang)
+        σe, σi = self.σ
+
+        dist_2norm = la.norm(np.stack((xx, yy)), axis=0)
+        self.DEe = decreasing_exponential(dist_2norm, σe)
+        self.DEi = decreasing_exponential(dist_2norm, σi)
+
     """Simulating traveling wave in non-localized inhibition neural system"""
-    def update(self, t: Tuple[int], inp: ndarray) -> ndarray:
+    def update(self, t: Tuple[int], inp: ndarray, timer=None) -> ndarray:
         """Check of the linear algebra solution"""
         # Model param
         u, v = inp.reshape(2, self.size, self.size)
         F = self.F
-        A, (θe, θi), (τe, τi), η, (σe, σi) = self.param.derivative_tuple
+        A, (θe, θi), (τe, τi), η, _ = self.param.derivative_tuple
 
         # Space param
-        x_lm = 21  # Found heuristically. No rational for limit from literature
-        dx = 1  # 2*x_lm/self.size
-        rang = np.linspace(-x_lm, x_lm, self.size)
-        xx, yy = np.meshgrid(rang, rang)
-
-        dist_2norm = la.norm(np.stack((xx, yy)), axis=0)
-        DEe = decreasing_exponential(dist_2norm, σe)
-        DEi = decreasing_exponential(dist_2norm, σi)
         # print(DEe.shape, u.shape, DEi.shape, v.shape,)
-        Ke = dx*convolve2d(DEe, u, mode='same', boundary='symm')
-        Ki = dx*convolve2d(DEi, v, mode='same', boundary='symm')
+        Ke = self.dx*convolve2d(u, self.DEe, mode='same', boundary='symm')
+        Ki = self.dx*convolve2d(v, self.DEi, mode='same', boundary='symm')
 
         # ODE equations
-        du = 1/(η*τe)*(-u + F((A[0, 0] * Ke - A[0, 1] * Ki - θe)))\
+        du = 1/(η*τe)*(-u + F(A[0, 0] * Ke - A[0, 1] * Ki - θe))\
             .reshape(u.shape)
 
         dv = 1/(η*τi)*(-v + F(A[1, 0] * Ke - A[1, 1] * Ki - θi))\
             .reshape(v.shape)
+
+        if timer:
+            timer(t)
 
         return concatenate((du, dv)).ravel()
