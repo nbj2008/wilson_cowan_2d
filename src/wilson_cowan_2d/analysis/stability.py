@@ -67,10 +67,22 @@ def derv_F(param: Param,  u_bar: fr,  v_bar: fr) -> np.ndarray:
     return param.β * ss*(1 - ss)
 
 
+def derv_SSNF(param: Param, u_bar: fr, v_bar: fr) -> np.ndarray:
+    """Calculates the derivative of the Supralinear Stabalized Network F
+    function. Assumes all values are > 0"""
+
+    ss = ss_F(param, u_bar, v_bar)
+    x = _inner_ss_F(param, u_bar, v_bar)
+    return param.n * ss/x
+
+
 def ss_F(param: Param,  u_bar: fr,  v_bar: fr) -> np.ndarray:
     """Provides the nonlinear function of equation 3 in Harris 2018"""
+    return param.F(_inner_ss_F(param, u_bar, v_bar))
 
-    return param.F(param.A[:,  0]*u_bar - param.A[:, 1]*v_bar - param.Θ)
+
+def _inner_ss_F(param: Param,  u_bar: fr,  v_bar: fr) -> np.ndarray:
+    return param.A[:,  0]*u_bar - param.A[:, 1]*v_bar - param.Θ
 
 
 def analytic_FT_decexp(σ: float,  ω: float) -> float:

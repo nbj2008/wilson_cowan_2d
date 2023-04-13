@@ -155,13 +155,16 @@ class WCDecExpMondronomy(WCKernel):
 
 
 class WCDecExpTravelNonLocal2D(WCKernel):
+    """Simulating traveling wave in 2D in a non-localized inhibition neural
+    system"""
+
     def __init__(self, inp: Tuple[ndarray], param: Param):
         super().__init__(inp, param)
         self._make_kernels()
         self._simple = True
 
     def _make_kernels(self):
-        x_lm = 24  # self.size/2  # Found heuristically. No rational for limit from literature
+        x_lm = 24  # Found heuristically. No rational for limit from literature
         self.dx = x_lm/self.size
         rang = np.linspace(-x_lm/2, x_lm/2, x_lm)
         xx, yy = np.meshgrid(rang, rang)
@@ -171,8 +174,8 @@ class WCDecExpTravelNonLocal2D(WCKernel):
         self.DEe = decreasing_exponential(dist_2norm, σe)
         self.DEi = decreasing_exponential(dist_2norm, σi)
 
-    """Simulating traveling wave in non-localized inhibition neural system"""
-    def update(self, t: Tuple[int], inp: ndarray, timer=None) -> ndarray:
+    def update(self, t: Tuple[int], inp: ndarray,
+               timer=None, boundary='symm') -> ndarray:
         """Check of the linear algebra solution"""
         # Model param
         u, v = inp.reshape(2, self.size, self.size)
@@ -181,8 +184,8 @@ class WCDecExpTravelNonLocal2D(WCKernel):
 
         # Space param
         # print(DEe.shape, u.shape, DEi.shape, v.shape,)
-        Ke = self.dx*convolve2d(u, self.DEe, mode='same', boundary='symm')
-        Ki = self.dx*convolve2d(v, self.DEi, mode='same', boundary='symm')
+        Ke = self.dx*convolve2d(u, self.DEe, mode='same', boundary=boundary)
+        Ki = self.dx*convolve2d(v, self.DEi, mode='same', boundary=boundary)
 
         # ODE equations
         du = 1/(η*τe)*(-u + F(A[0, 0] * Ke - A[0, 1] * Ki - θe))\
