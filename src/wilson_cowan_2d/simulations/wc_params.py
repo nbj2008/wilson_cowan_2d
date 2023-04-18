@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from numpy import ndarray, ones, array
-from .nonlinear_functions import sigmoid
+from .nonlinear_functions import sigmoid, ssn_power_law
 
 # Typing
 from typing import NewType
@@ -22,6 +22,8 @@ class WCKernelParam:
 
 
 Param = NewType("Param", WCKernelParam)
+_default_ssn_values = {"A": array([[1.5, 1], [10, 1]]),
+                       "Θ": array([-5, -0.01]), "η": 1, "σ": ones(2), "β": 50}
 
 
 class DefaultParams(WCKernelParam):
@@ -36,6 +38,19 @@ class DefaultParams(WCKernelParam):
 
     def F(self, other):
         return sigmoid(other, self.β)  # 1/(1 + nexp(-self.β * other))
+
+
+class SSNDefaultParams(WCKernelParam):
+    """Default set of Parameters used in Harris 2018"""
+
+    def __init__(self, τ: ndarray, n: float, size: int, k: float = 1, **kwargs):
+        inp = _default_ssn_values | kwargs  # Gives defaults unless in kwargs
+        super().__init__(τ=τ, size=size, **inp)
+        self.n = n
+        self.k = k
+
+    def F(self, other):
+        return ssn_power_law(other, self.n, self.k)
 
 
 class MondronomyParams(WCKernelParam):
@@ -59,3 +74,21 @@ class MondronomyParams(WCKernelParam):
 
     def F(self, other):
         return sigmoid(other, self.β)  # 1/(1 + nexp(-self.β * other))
+
+
+class SSNMondronomyParams(SSNDefaultParams):
+    """Parameters for calculating Mondronomy Matrices"""
+    def __init__(self, ω, **kwargs):
+        super().__init__(**kwargs)
+        self.ω = ω
+
+    @classmethod
+    def from_system_params(cls, o: Param, ω: float):
+        return MondronomyParams(o.A, o.Θ, o.τ, o.β, o.η, o.size, o.σ, ω)
+
+    @property
+    def derivative_tuple(self):
+        return (self.A, self.Θ, self.τ, self.η, self.σ, self.ω)
+
+    def F(self, other):
+        return ssn_power_law(other, self.n, self.k)

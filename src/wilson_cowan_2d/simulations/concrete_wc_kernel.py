@@ -3,10 +3,10 @@ from numpy import concatenate, ndarray, split
 from scipy import linalg as la
 from scipy.signal import convolve2d
 from .nonlinear_functions import decreasing_exponential
-from ..analysis.stability import calc_AA
+from ..analysis.stability import calc_AA, derv_F
 
 # Typing
-from typing import Tuple
+from typing import Tuple, Callable
 from .wc_kernel import WCKernel
 from . import Param
 
@@ -23,7 +23,8 @@ class WCUnif(WCKernel):
         dv = 1/(η*τi)*(-v + F(A[1, 0] * u - A[1, 1] * v - θi))\
             .reshape(v.shape)
 
-        return np.concatenate((du, dv))
+
+        return np.array((du, dv)).ravel()
 
 
 class WCDecExpStatic1D(WCKernel):
@@ -123,9 +124,10 @@ class WCDecExpTravelNonLocal1D(WCKernel):
 # TODO: Actually get this to work
 class WCDecExpMondronomy(WCKernel):
     """System for determining the Mondronomy Matrix"""
-    def __init__(self, inp: Tuple[ndarray], param: Param):
+    def __init__(self, inp: Tuple[ndarray], param: Param, derv: Callable = derv_F):
         super().__init__(inp, param)
         self._simple = True
+        self._derv = derv
 
     @property
     def initial_inp_matrix(self):
@@ -141,7 +143,7 @@ class WCDecExpMondronomy(WCKernel):
         u, v = inp[4:]
         F = self.F
         A, (θe, θi), (τe, τi), η, _, _ = self.param.derivative_tuple
-        AA = calc_AA(u, v, self.param)
+        AA = calc_AA(u, v, self.param, derv=self._derv)
 
         # # Iterate U an V values
         du = 1/(η*τe)*(-u + F((A[0, 0] * u - A[0, 1] * v - θe)))

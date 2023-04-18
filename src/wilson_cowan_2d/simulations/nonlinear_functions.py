@@ -12,5 +12,5 @@ def sigmoid(x: ndarray, β: float) -> ndarray:
 
 
 def ssn_power_law(x: ndarray, n: float, k: float) -> ndarray:
-    m = np.ma.masked_array(x, x <= 0, 0)
+    m = np.ma.masked_array(x, x <= 0, fill_value=0)
     return k * np.power(m.filled(), n)

@@ -2,63 +2,12 @@ import numpy as np
 from scipy.linalg import svd
 from scipy.spatial import ConvexHull
 
-from typing import NewType, List, Tuple
+from typing import NewType, List, Tuple, Callable
 from ..simulations import SimResult, Param
 
 fr = NewType("fr", float)
 
 _dflt_range = np.linspace(0, 100, 1_000)
-
-
-def calc_D0(u_bar: fr,  v_bar: fr,  param: Param) -> np.ndarray:
-    """Calculates the Determinate with ω = 0 from
-    the Linear Stablility Analysis in Harris 2018
-    """
-
-    bs = calc_bs(param,  u_bar,  v_bar)
-    return (1 - bs[0, 0])*(1 + bs[1, 1]) + bs[0, 1]*bs[1, 0]
-
-
-def calc_Dω(param: Param, equib_point: Tuple[fr], σ: float,
-            point_range: np.ndarray = _dflt_range) -> np.ndarray:
-    """Calculates the Determinate for given ω from
-    the Linear Stablility Analysis in Harris 2018
-    """
-
-    bs = calc_bs(param, equib_point[0], equib_point[1])
-    e_ft = analytic_FT_decexp(σ[0], point_range)
-    i_ft = analytic_FT_decexp(σ[1], point_range)
-
-    return _Dω_equation(bs, e_ft, i_ft)
-
-
-def calc_Dω_range(param: Param, equib_point: Tuple[fr], σe: float, σi_range: np.ndarray,
-                  point_range: np.ndarray = _dflt_range) -> List[np.ndarray]:
-    """Calculates the Determinate over range of ωs from
-    the Linear Stablility Analysis in Harris 2018
-    """
-
-    bs = calc_bs(param, equib_point[0], equib_point[1])
-    e_ft = analytic_FT_decexp(σe, point_range)
-
-    return [_Dω_equation(bs, e_ft, analytic_FT_decexp(σi, point_range))
-            for σi in σi_range]
-
-
-def _Dω_equation(bs: np.ndarray, eft: np.ndarray, ift: np.ndarray) -> np.ndarray:
-    return (1 - bs[0, 0]*eft)*(1 + bs[1, 1]*ift) + bs[0, 1]*bs[1, 0]*eft*ift
-
-
-def calc_bs(param: Param,  u_bar: fr,  v_bar: fr) -> np.ndarray:
-    """Calculates the values of b from equation 5 in Harris 2018"""
-
-    if u_bar.size == 1:
-        init = derv_F(param, u_bar, v_bar).reshape(2, 1)
-        return param.A * init
-    else:
-        init = [x.reshape(2, 1) for x in derv_F(param,  u_bar,  v_bar)]
-        return np.array([param.A * x for x in init])
-    # return param.A * derv_F(param,  u_bar,  v_bar).reshape(2, u_bar.size)
 
 
 def derv_F(param: Param,  u_bar: fr,  v_bar: fr) -> np.ndarray:
@@ -74,6 +23,59 @@ def derv_SSNF(param: Param, u_bar: fr, v_bar: fr) -> np.ndarray:
     ss = ss_F(param, u_bar, v_bar)
     x = _inner_ss_F(param, u_bar, v_bar)
     return param.n * ss/x
+
+
+def calc_D0(u_bar: fr,  v_bar: fr,  param: Param, derv: Callable = derv_F) -> np.ndarray:
+    """Calculates the Determinate with ω = 0 from
+    the Linear Stablility Analysis in Harris 2018
+    """
+
+    bs = calc_bs(param,  u_bar,  v_bar, derv=derv)
+    return (1 - bs[0, 0])*(1 + bs[1, 1]) + bs[0, 1]*bs[1, 0]
+
+
+def calc_Dω(param: Param, equib_point: Tuple[fr], σ: float, point_range:
+             np.ndarray = _dflt_range, derv: Callable = derv_F) -> np.ndarray:
+    """Calculates the Determinate for given ω from
+    the Linear Stablility Analysis in Harris 2018
+    """
+
+    bs = calc_bs(param, equib_point[0], equib_point[1], derv=derv)
+    e_ft = analytic_FT_decexp(σ[0], point_range)
+    i_ft = analytic_FT_decexp(σ[1], point_range)
+
+    return _Dω_equation(bs, e_ft, i_ft)
+
+
+def calc_Dω_range(param: Param, equib_point: Tuple[fr], σe: float, σi_range:
+                  np.ndarray, point_range: np.ndarray = _dflt_range, derv:
+                  Callable = derv_F) -> List[np.ndarray]:
+    """Calculates the Determinate over range of ωs from
+    the Linear Stablility Analysis in Harris 2018
+    """
+
+    bs = calc_bs(param, equib_point[0], equib_point[1], derv=derv)
+    e_ft = analytic_FT_decexp(σe, point_range)
+
+    return [(_Dω_equation(bs, e_ft, analytic_FT_decexp(σi, point_range)), σi)
+            for σi in σi_range]
+
+
+def _Dω_equation(bs: np.ndarray, eft: np.ndarray, ift: np.ndarray) -> np.ndarray:
+    return (1 - bs[0, 0]*eft)*(1 + bs[1, 1]*ift) + bs[0, 1]*bs[1, 0]*eft*ift
+
+
+def calc_bs(param: Param,  u_bar: fr,  v_bar: fr, derv: Callable = derv_F) -> np.ndarray:
+    """Calculates the values of b from equation 5 in Harris 2018"""
+
+    if u_bar.size == 1:
+        init = derv(param, u_bar, v_bar).reshape(2, 1)
+        return param.A * init
+    else:
+        init = [x.reshape(2, 1) for x in derv(param,  u_bar,  v_bar)]
+        return np.array([param.A * x for x in init])
+    # return param.A * derv_F(param,  u_bar,  v_bar).reshape(2, u_bar.size)
+
 
 
 def ss_F(param: Param,  u_bar: fr,  v_bar: fr) -> np.ndarray:
@@ -121,11 +123,11 @@ def fit_convex_hull(res):
     return (points[hull.vertices, 0], points[hull.vertices, 1])
 
 
-def calc_AA(u, v, param):
+def calc_AA(u, v, param, derv: Callable = derv_F):
     """Calculates the coefficient matrix for periodic orbits from simulation.
     For determining the Mondronomy Matrix."""
 
-    bs = calc_bs(param, u, v)
+    bs = calc_bs(param, u, v, derv=derv)
     Fe = analytic_FT_decexp(param.σ[0], param.ω)
     Fi = analytic_FT_decexp(param.σ[1], param.ω)
     τ = param.τ[1]/param.τ[0]

@@ -1,4 +1,4 @@
-from numpy import concatenate, split
+from numpy import concatenate, split, array
 from scipy.integrate import solve_ivp
 
 # Class Niceities
@@ -48,7 +48,8 @@ class WCKernel(ABC):
     @property
     def initial_inp_matrix(self) -> ndarray:
         if self.initial_inp[0].size == 1:
-            return concatenate(self.initial_inp)
+            # return concatenate(self.initial_inp)
+            return array(self.initial_inp)
 
         return concatenate(self.initial_inp, axis=1).T
 
