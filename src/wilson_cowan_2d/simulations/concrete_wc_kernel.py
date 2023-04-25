@@ -166,7 +166,7 @@ class WCDecExpTravelNonLocal2D(WCKernel):
         self._simple = True
 
     def _make_kernels(self):
-        x_lm = 24  # Found heuristically. No rational for limit from literature
+        x_lm = 25  # Found heuristically. No rational for limit from literature
         self.dx = x_lm/self.size
         rang = np.linspace(-x_lm/2, x_lm/2, x_lm)
         xx, yy = np.meshgrid(rang, rang)

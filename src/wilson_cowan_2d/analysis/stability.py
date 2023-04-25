@@ -22,7 +22,9 @@ def derv_SSNF(param: Param, u_bar: fr, v_bar: fr) -> np.ndarray:
 
     ss = ss_F(param, u_bar, v_bar)
     x = _inner_ss_F(param, u_bar, v_bar)
-    return param.n * ss/x
+    res = param.n * ss/x
+    res[x <= 0] = 0
+    return res
 
 
 def calc_D0(u_bar: fr,  v_bar: fr,  param: Param, derv: Callable = derv_F) -> np.ndarray:
