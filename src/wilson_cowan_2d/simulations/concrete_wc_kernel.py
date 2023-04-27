@@ -100,6 +100,43 @@ class WCDecExpTravelNonLocal1D(WCKernel):
         abss = np.abs(np.linspace(-x_lm, x_lm, self.size))
 
         DEe = decreasing_exponential(abss, σe)
+        u_large = np.concatenate([u.ravel()[:mr_lm],
+                                  u.ravel(), u.ravel()[1:]])
+        DEi = decreasing_exponential(abss, σi)
+        v_large = np.concatenate([v.ravel()[:mr_lm],
+                                  v.ravel(), v.ravel()[1:]])
+
+        Ke = dx*np.convolve(DEe, u_large, mode='same')[mr_lm:2*mr_lm+1]\
+            .reshape(self.size, 1)
+        Ki = dx*np.convolve(DEi, v_large, mode='same')[mr_lm:2*mr_lm+1]\
+            .reshape(self.size, 1)
+
+        # ODE equations
+        du = 1/(η*τe)*(-u + F((A[0, 0] * Ke - A[0, 1] * Ki - θe)))\
+            .reshape(u.shape)
+
+        dv = 1/(η*τi)*(-v + F(A[1, 0] * Ke - A[1, 1] * Ki - θi))\
+            .reshape(v.shape)
+
+        return concatenate((du, dv)).ravel()
+
+
+class WCReflectDecExpTravelNonLocal1D(WCKernel):
+    """Simulating traveling wave in non-localized inhibition neural system"""
+    def update(self, t: Tuple[int], inp: ndarray) -> ndarray:
+        """Check of the linear algebra solution"""
+        # Model param
+        u, v = split(inp.reshape(2*self.size, 1), 2)
+        F = self.F
+        A, (θe, θi), (τe, τi), η, (σe, σi) = self.param.derivative_tuple
+
+        # Space param
+        x_lm = 21  # Found heuristically. No rational for limit from literature
+        mr_lm = self.size-1
+        dx = 2*x_lm/self.size
+        abss = np.abs(np.linspace(-x_lm, x_lm, self.size))
+
+        DEe = decreasing_exponential(abss, σe)
         u_mirror = np.concatenate([np.flip(u).ravel()[:mr_lm],
                                    u.ravel(), np.flip(u).ravel()[1:]])
         DEi = decreasing_exponential(abss, σi)

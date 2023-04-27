@@ -44,7 +44,11 @@ class SSNDefaultParams(WCKernelParam):
     """Default set of Parameters used in Harris 2018"""
 
     def __init__(self, τ: ndarray, n: float, size: int, k: float = 1, **kwargs):
-        inp = _default_ssn_values | kwargs  # Gives defaults unless in kwargs
+        # inp = _default_ssn_values | kwargs  # Gives defaults unless in kwargs
+        inp = _default_ssn_values
+        for key, val in kwargs.items():
+            inp[key] = val
+
         super().__init__(τ=τ, size=size, **inp)
         self.n = n
         self.k = k
