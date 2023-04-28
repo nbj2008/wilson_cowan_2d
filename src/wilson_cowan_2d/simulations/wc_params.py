@@ -45,7 +45,7 @@ class SSNDefaultParams(WCKernelParam):
 
     def __init__(self, τ: ndarray, n: float, size: int, k: float = 1, **kwargs):
         # inp = _default_ssn_values | kwargs  # Gives defaults unless in kwargs
-        inp = _default_ssn_values
+        inp = _default_ssn_values.copy()
         for key, val in kwargs.items():
             inp[key] = val
 

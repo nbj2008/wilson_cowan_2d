@@ -100,15 +100,11 @@ class WCDecExpTravelNonLocal1D(WCKernel):
         abss = np.abs(np.linspace(-x_lm, x_lm, self.size))
 
         DEe = decreasing_exponential(abss, σe)
-        u_large = np.concatenate([u.ravel()[:mr_lm],
-                                  u.ravel(), u.ravel()[1:]])
         DEi = decreasing_exponential(abss, σi)
-        v_large = np.concatenate([v.ravel()[:mr_lm],
-                                  v.ravel(), v.ravel()[1:]])
 
-        Ke = dx*np.convolve(DEe, u_large, mode='same')[mr_lm:2*mr_lm+1]\
+        Ke = dx*np.convolve(DEe, u.ravel(), mode='same')\
             .reshape(self.size, 1)
-        Ki = dx*np.convolve(DEi, v_large, mode='same')[mr_lm:2*mr_lm+1]\
+        Ki = dx*np.convolve(DEi, v.ravel(), mode='same')\
             .reshape(self.size, 1)
 
         # ODE equations

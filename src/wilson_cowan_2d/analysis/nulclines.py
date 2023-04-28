@@ -28,20 +28,20 @@ def calc_nulclines(params: Param, interp_prec: float = 1e-3,
                    fit_points: int = 250,
                    t_rang: Tuple[float]=(0,1)) -> Tuple[np.ndarray]:
     """Calculates the nulclines of the U and V firing rates"""
-    u_func = partial(_u_min_func, params=params)
-    v_func = partial(_v_min_func, params=params)
+    e_func = partial(_e_min_func, params=params)
+    i_func = partial(_i_min_func, params=params)
 
-    uus = vvs = np.linspace(t_rang[0], t_rang[1], fit_points)
-    uvs = _generate_fits(u_func, uus)
-    vus = _generate_fits(v_func, vvs)
+    us = np.linspace(t_rang[0], t_rang[1], fit_points)
+    ves = _generate_fits(e_func, us)
+    vis = _generate_fits(i_func, us)
 
     tt = np.arange(t_rang[0], t_rang[1], interp_prec)
-    nucs = _interpolate_nulclines((uus, uvs), (vus, vvs), tt)
+    nucs = _interpolate_nulclines((us, ves), (us, vis), tt)
     return tuple(np.stack((tt, n)) for n in nucs)
 
 
 def _generate_fits(func: Callable, rang: np.ndarray = np.linspace(0, 1, 250)) -> List[float]:
-    return [opt.minimize(func, v, args=(v), method='nelder-mead').x[0]
+    return [opt.minimize(func, 0.5, args=(v), method='nelder-mead').x[0]
             for v in rang]
 
 
@@ -59,13 +59,13 @@ def _find_cross_points(rang: np.ndarray, uinterp: fr, vinterp: fr) -> np.ndarray
     return np.stack([rx, vx])
 
 
-def _u_min_func(v: fr, u: fr, params) -> np.ndarray:
+def _e_min_func(v: fr, u: fr, params) -> np.ndarray:
     """From equation 3 in Harris 2018"""
     return np.abs(
-        params.F(params.A[0, 0]*u - params.A[0, 1]*v - params.Θ[0]) - u)
+        params.F(params.A[0, 0]*u - params.A[0, 1]*v - params.Θ[0]) - u)   + 1e-8*np.abs(v)
 
 
-def _v_min_func(u, v, params) -> np.ndarray:
+def _i_min_func(v, u, params) -> np.ndarray:
     """From equation 3 in Harris 2018"""
     return np.abs(
-        params.F(params.A[1, 0]*u - params.A[1, 1]*v - params.Θ[1]) - v)
+        params.F(params.A[1, 0]*u - params.A[1, 1]*v - params.Θ[1]) - v)   + 1e-8*np.abs(v)
