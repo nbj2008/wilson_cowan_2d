@@ -64,7 +64,7 @@ class WCDecExpTravelLocal1D(WCKernel):
         A, (θe, θi), (τe, τi), η, (σe, σi) = self.param.derivative_tuple
 
         # Space Param
-        x_lm = 21
+        x_lm = self.size//2  # 31
         mr_lm = self.size-1
         dx = 2*x_lm/self.size
 
@@ -75,6 +75,7 @@ class WCDecExpTravelLocal1D(WCKernel):
         Ke = dx*np.convolve(DEe, u_mirror, mode='same')[mr_lm:2*mr_lm+1]\
             .reshape(self.size, 1)
 
+        # print(θe, θi)
         du = 1/(η*τe)*(-u + F((A[0, 0] * Ke - A[0, 1] * v - θe)))\
             .reshape(u.shape)
 
@@ -127,7 +128,7 @@ class WCReflectDecExpTravelNonLocal1D(WCKernel):
         A, (θe, θi), (τe, τi), η, (σe, σi) = self.param.derivative_tuple
 
         # Space param
-        x_lm = 21  # Found heuristically. No rational for limit from literature
+        x_lm = 25  # Found heuristically. No rational for limit from literature
         mr_lm = self.size-1
         dx = 2*x_lm/self.size
         abss = np.abs(np.linspace(-x_lm, x_lm, self.size))
